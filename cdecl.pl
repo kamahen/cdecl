@@ -10,13 +10,13 @@
 % C casts, although that wouldn't be difficult to add.
 % And quite a few things are left out, such as _Atomic, _Thread_local, etc.
 
-:- meta_predicate seq(2, ?, ?). % TODO: add param
-:- meta_predicate seq(2, ?, ?, ?).
-:- meta_predicate seq_(?, 2, ?, ?).
+:- use_module(library(dcg/high_order)).
+
 :- meta_predicate optional(2, ?, ?). % TODO: add param
 
 cdecl_explain(Cdecl, _Explanation) :-
     string_codes(Cdecl, Codes),
+    % TODO: use eos//0
     phrase(declaration, Codes).
 
 % See grammar at https://en.cppreference.com/w/c/language/declarations
@@ -33,7 +33,7 @@ cdecl_explain(Cdecl, _Explanation) :-
 
 % <declaration> ::=  {<declaration-specifier>}+ {<init-declarator>}* ;
 
-declaration --> plus_seq(declaration_specifier), seq(init_declarator), optional(token(';')), optional_space.
+declaration --> plus_seq(declaration_specifier), sequence(init_declarator, _XXX), optional(token(';')), optional_space.
 
 % <declaration-specifier> ::= <storage-class-specifier>
 %                           | <type-specifier>
@@ -41,7 +41,7 @@ declaration --> plus_seq(declaration_specifier), seq(init_declarator), optional(
 
 declaration_specifier --> storage_class_specifier.
 declaration_specifier --> type_specifier.
-declaration_specifier --> type_qualifier.
+declaration_specifier --> type_qualifier(_XXX).
 
 % <storage-class-specifier> ::= 'auto'
 %                             | 'register'
@@ -97,13 +97,13 @@ struct_or_union --> token(union).
 
 % % <struct-declaration> ::= {<specifier-qualifier>}* <struct-declarator-list>
 
-% struct_declaration -->  seq(specifier_qualifier), struct_declarator_list.
+% struct_declaration -->  sequence(specifier_qualifier, _), struct_declarator_list.
 
 % <specifier-qualifier> ::= <type-specifier>
 %                         | <type-qualifier>
 
 specifier_qualifier --> type_specifier.
-specifier_qualifier --> type_qualifier.
+specifier_qualifier --> type_qualifier(_XXX).
 
 % % <struct-declarator-list> ::= <struct-declarator>
 % %                            | <struct-declarator-list> ',' <struct-declarator>
@@ -126,13 +126,13 @@ declarator --> optional(pointer), direct_declarator.
 
 % <pointer> ::= * {<type-qualifier>}* {<pointer>}?
 
-pointer --> token('*'), seq(type_qualifier), optional(pointer).
+pointer --> token('*'), sequence(type_qualifier, _XXX), optional(pointer).
 
 % <type-qualifier> ::= const
 %                    | volatile
 
-type_qualifier --> token(const).
-type_qualifier --> token(volatile).
+type_qualifier(_XXX) --> token(const).
+type_qualifier(_XXX) --> token(volatile).
 
 % <direct-declarator> ::= <identifier>
 %                       | '(' <declarator> ')'
@@ -144,7 +144,7 @@ direct_declarator --> identifier(_Id).
 direct_declarator --> token('('), declarator,  token(')').
 direct_declarator --> direct_declarator, token('['), optional(constant_expression), token(']').
 direct_declarator --> direct_declarator, token('('), parameter_type_list, token(')').
-direct_declarator --> direct_declarator, token('('), seq(identifier(_)), token(')').
+direct_declarator --> direct_declarator, token('('), sequence(identifier, _), token(')').
 
 % <type-name> ::= {<specifier-qualifier>}+ {<abstract-declarator>}?
 
@@ -213,7 +213,7 @@ typedef_name --> identifier(_Id).
 % <init-declarator> ::= <declarator>
 %                     | <declarator> '=' <initializer>
 
-init_declarator --> declarator.
+init_declarator(_XXX) --> declarator.
 % init_declarator --> declarator, token('='), initializer.
 
 
@@ -273,20 +273,11 @@ nonblanks([H|T]) -->
 nonblanks([]) -->
     [].
 
-seq(Match) --> seq(Match, _List).  % TODO: remove
-
-seq(Match, List) --> seq_(List, Match).
-
-seq_([], _Match) --> [].
-seq_([E|Es], Match) -->
-    call(Match, E),
-    seq_(Es, Match).
-
 plus_seq(_Match) --> plus_seq(_).
 
 plus_seq(Match, [A|List]) -->
     call(Match, A),
-    seq_(List, Match).
+    sequence(Match, List).
 
 optional(Match) --> % TODO: add Default
     Match, !.
