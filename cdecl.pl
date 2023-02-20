@@ -13,7 +13,7 @@
 :- meta_predicate seq(2, ?, ?). % TODO: add param
 :- meta_predicate seq(2, ?, ?, ?).
 :- meta_predicate seq_(?, 2, ?, ?).
-:- meta_predicate optional(2). % TODO: add param
+:- meta_predicate optional(2, ?, ?). % TODO: add param
 
 cdecl_explain(Cdecl, _Explanation) :-
     string_codes(Cdecl, Codes),
@@ -87,7 +87,7 @@ type_specifier --> typedef_name.
 
 % struct_or_union_specifier --> struct_or_union, identifier, token('{'), plus_seq(struct_declaration, _S), token('}').
 % struct_or_union_specifier --> struct_or_union, token('{'), plus_seq(struct_declaration, _S), token('}').
-struct_or_union_specifier --> struct_or_union, identifier.
+struct_or_union_specifier --> struct_or_union, identifier(_Id).
 
 % <struct-or-union> ::= 'struct'
 %                     | 'union'
@@ -140,11 +140,11 @@ type_qualifier --> token(volatile).
 %                       | <direct-declarator> '(' <parameter-type-list> ')'
 %                       | <direct-declarator> '(' {<identifier>}* ')'
 
-direct_declarator --> identifier.
+direct_declarator --> identifier(_Id).
 direct_declarator --> token('('), declarator,  token(')').
 direct_declarator --> direct_declarator, token('['), optional(constant_expression), token(']').
 direct_declarator --> direct_declarator, token('('), parameter_type_list, token(')').
-direct_declarator --> direct_declarator, token('('), seq(identifier), token(')').
+direct_declarator --> direct_declarator, token('('), seq(identifier(_)), token(')').
 
 % <type-name> ::= {<specifier-qualifier>}+ {<abstract-declarator>}?
 
@@ -190,9 +190,9 @@ direct_abstract_declarator --> optional(direct_abstract_declarator), token('('),
 %                    | 'enum' '{' <enumerator-list> }
 %                    | 'enum' <identifier>
 
-enum_specifier --> token(enum), identifier, token('{'), enumerator_list, token('}').
+enum_specifier --> token(enum), identifier(_Id), token('{'), enumerator_list, token('}').
 enum_specifier --> token(enum), token('{'), enumerator_list, token('}').
-enum_specifier --> token(enum), identifier.
+enum_specifier --> token(enum), identifier(_Id).
 
 % <enumerator-list> ::= <enumerator>
 %                     | <enumerator-list> ',' <enumerator>
@@ -203,12 +203,12 @@ enumerator_list --> enumerator_list, token(','), enumerator.
 % <enumerator> ::= <identifier>
 %                | <identifier> '=' <constant-expression>
 
-enumerator --> identifier.
+enumerator --> identifier(_Id).
 % enumerator --> identifier, token('='), constant_expression.
 
 % <typedef-name> ::= <identifier>
 
-typedef_name --> identifier.
+typedef_name --> identifier(_Id).
 
 % <init-declarator> ::= <declarator>
 %                     | <declarator> '=' <initializer>
@@ -219,45 +219,47 @@ init_declarator --> declarator.
 
 constant_expression --> token(_). % TODO: improve this
 
-% TODO: improve this.
-identifier -->
-    optional_space,
-    identifier_.
-
-identifier_ -->
-    [C],
-    { is_alnum(C) }, % improve this - ensure 1st is alpha, allow '_'
-    identifier_.
-idnetifier_ --> [].
-
-% :- table token//1.
-% token(T) -->
-%   optional_space,
-%   nonblanks(T_codes),
-%   { atom_codes(T, T_codes) }.
-
-token(T, S0, S) :-
-    optional_space(S0, S1),
-    (   var(S0)
-    ->  atom_codes(T, T_codes),
-        append(T_codes, S, S1)
-    ;   nonblanks(T_codes, S1, S),
-        atom_codes(T, T_codes)
+% TODO: improve this (starts with "_" or alpha, all "_").
+identifier(Id) -->
+    (   { var(Id) }
+    ->  optional_space,
+        [C],
+        { is_csymf(C) },
+        identifier_(IdCodes),
+        { atom_codes(Id, [C|IdCodes]) }
+    ;   { atom_codes(Id, IdCodes) },
+        IdCodes
     ).
 
-% optional_space --> [].
-% optional_space --> [C], {is_space(C)}, optional_space.
+identifier_([C|Cs]) -->
+    [C],
+    { is_csym(C) },
+    identifier_(Cs).
+identifier_([]) --> [].
 
-optional_space(S, S).
-optional_space([X|S0], S) :-
-    nonvar(X),  % prevent infinite expansion when generating
-    is_space(X),
-    optional_space(S0, S).
+token(T) -->
+    optional_space,
+    (   { var(T) }
+    ->  nonblanks(T_codes),
+        { atom_codes(T, T_codes) }
+    ;   { atom_codes(T, T_codes) },
+        T_codes
+    ).
+
+optional_space --> [].
+optional_space -->
+    [C],
+    { nonvar(C) },
+    { is_space(C) },
+    optional_space.
 
 space -->
     [C],
-    { is_space(C) },
-    optional_space.
+    (   { var(C) }
+    ->  { C = " " }
+    ;   { is_space(C) },
+        optional_space
+    ).
 
 %! nonblanks(-Codes)// is det.
 %  Take all =graph= characters
