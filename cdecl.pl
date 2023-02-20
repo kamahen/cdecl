@@ -33,15 +33,15 @@ cdecl_explain(Cdecl, _Explanation) :-
 
 % <declaration> ::=  {<declaration-specifier>}+ {<init-declarator>}* ;
 
-declaration --> plus_seq(declaration_specifier), sequence(init_declarator, _XXX), optional(token(';')), optional_space.
+declaration --> plus_seq(declaration_specifier, _XXX), sequence(init_declarator, _XXX2), optional(token(';')), optional_space.
 
 % <declaration-specifier> ::= <storage-class-specifier>
 %                           | <type-specifier>
 %                           | <type-qualifier>
 
-declaration_specifier --> storage_class_specifier.
-declaration_specifier --> type_specifier.
-declaration_specifier --> type_qualifier(_XXX).
+declaration_specifier(Specifier) --> storage_class_specifier(Specifier).
+declaration_specifier(Specifier) --> type_specifier(Specifier).
+declaration_specifier(Specifier) --> type_qualifier(Specifier).
 
 % <storage-class-specifier> ::= 'auto'
 %                             | 'register'
@@ -49,11 +49,11 @@ declaration_specifier --> type_qualifier(_XXX).
 %                             | 'extern'
 %                             | 'typedef'
 
-storage_class_specifier --> token(auto).
-storage_class_specifier --> token(register).
-storage_class_specifier --> token(static).
-storage_class_specifier --> token(extern).
-storage_class_specifier --> token(typedef).
+storage_class_specifier(auto)     --> token(auto).
+storage_class_specifier(register) --> token(register).
+storage_class_specifier(static)   --> token(static).
+storage_class_specifier(extern)   --> token(extern).
+storage_class_specifier(typedef)  --> token(typedef).
 
 % <type-specifier> ::= 'void'
 %                    | 'char'
@@ -68,32 +68,32 @@ storage_class_specifier --> token(typedef).
 %                    | <enum-specifier>
 %                    | <typedef-name>
 
-type_specifier --> token(void).
-type_specifier --> token(char).
-type_specifier --> token(short).
-type_specifier --> token(int).
-type_specifier --> token(long).
-type_specifier --> token(float).
-type_specifier --> token(double).
-type_specifier --> token(signed).
-type_specifier --> token(unsigned).
-type_specifier --> struct_or_union_specifier.
-type_specifier --> enum_specifier.
-type_specifier --> typedef_name.
+type_specifier(void)      --> token(void).
+type_specifier(char)      --> token(char).
+type_specifier(short)     --> token(short).
+type_specifier(int)       --> token(int).
+type_specifier(long)      --> token(long).
+type_specifier(float)     --> token(float).
+type_specifier(double)    --> token(double).
+type_specifier(signed)    --> token(signed).
+type_specifier(unsigned)  --> token(unsigned).
+type_specifier(Specifier) --> struct_or_union_specifier(Specifier).
+type_specifier(Specifier) --> enum_specifier(Specifier).
+type_specifier(Specifier) --> typedef_name(Specifier).
 
 % <struct-or-union-specifier> ::= <struct-or-union> <identifier> '{' {<struct-declaration>}+ '}'
 %                               | <struct-or-union> '{' {<struct-declaration>}+ '}'
 %                               | <struct-or-union> <identifier>
 
-% struct_or_union_specifier --> struct_or_union, identifier, token('{'), plus_seq(struct_declaration, _S), token('}').
-% struct_or_union_specifier --> struct_or_union, token('{'), plus_seq(struct_declaration, _S), token('}').
-struct_or_union_specifier --> struct_or_union, identifier(_Id).
+% struct_or_union_specifier --> struct_or_union, identifier, token('{'), plus_seq(struct_declaration, _XXX), token('}').
+% struct_or_union_specifier --> struct_or_union, token('{'), plus_seq(struct_declaration, _XXX), token('}').
+struct_or_union_specifier(Specifier) --> struct_or_union(Specifier), identifier(_XXX).
 
 % <struct-or-union> ::= 'struct'
 %                     | 'union'
 
-struct_or_union --> token(struct).
-struct_or_union --> token(union).
+struct_or_union(struct) --> token(struct).
+struct_or_union(union)  --> token(union).
 
 % % <struct-declaration> ::= {<specifier-qualifier>}* <struct-declarator-list>
 
@@ -102,8 +102,8 @@ struct_or_union --> token(union).
 % <specifier-qualifier> ::= <type-specifier>
 %                         | <type-qualifier>
 
-specifier_qualifier --> type_specifier.
-specifier_qualifier --> type_qualifier(_XXX).
+specifier_qualifier(Specifier) --> type_specifier(Specifier).
+specifier_qualifier(Specifier) --> type_qualifier(Specifier).
 
 % % <struct-declarator-list> ::= <struct-declarator>
 % %                            | <struct-declarator-list> ',' <struct-declarator>
@@ -131,8 +131,8 @@ pointer --> token('*'), sequence(type_qualifier, _XXX), optional(pointer).
 % <type-qualifier> ::= const
 %                    | volatile
 
-type_qualifier(_XXX) --> token(const).
-type_qualifier(_XXX) --> token(volatile).
+type_qualifier(const)    --> token(const).
+type_qualifier(volatile) --> token(volatile).
 
 % <direct-declarator> ::= <identifier>
 %                       | '(' <declarator> ')'
@@ -140,7 +140,7 @@ type_qualifier(_XXX) --> token(volatile).
 %                       | <direct-declarator> '(' <parameter-type-list> ')'
 %                       | <direct-declarator> '(' {<identifier>}* ')'
 
-direct_declarator --> identifier(_Id).
+direct_declarator --> identifier(_XXX).
 direct_declarator --> token('('), declarator,  token(')').
 direct_declarator --> direct_declarator, token('['), optional(constant_expression), token(']').
 direct_declarator --> direct_declarator, token('('), parameter_type_list, token(')').
@@ -148,7 +148,7 @@ direct_declarator --> direct_declarator, token('('), sequence(identifier, _), to
 
 % <type-name> ::= {<specifier-qualifier>}+ {<abstract-declarator>}?
 
-type_name --> plus_seq(specifier_qualifier), optional(abstract_declarator).
+type_name --> plus_seq(specifier_qualifier, _XXX), optional(abstract_declarator).
 
 % <parameter-type-list> ::= <parameter-list>
 %                         | <parameter-list> ',' '...'
@@ -166,9 +166,9 @@ parameter_list --> parameter_list, token(','), parameter_declaration.
 %                           | {<declaration-specifier>}+ <abstract-declarator>
 %                           | {<declaration-specifier>}+
 
-parameter_declaration --> plus_seq(declaration_specifier), declarator.
-parameter_declaration --> plus_seq(declaration_specifier), abstract_declarator.
-parameter_declaration --> plus_seq(declaration_specifier).
+parameter_declaration --> plus_seq(declaration_specifier, _XXX), declarator.
+parameter_declaration --> plus_seq(declaration_specifier, _XXX), abstract_declarator.
+parameter_declaration --> plus_seq(declaration_specifier, _XXX).
 
 % <abstract-declarator> ::= <pointer>
 %                         | <pointer> <direct-abstract-declarator>
@@ -190,25 +190,25 @@ direct_abstract_declarator --> optional(direct_abstract_declarator), token('('),
 %                    | 'enum' '{' <enumerator-list> }
 %                    | 'enum' <identifier>
 
-enum_specifier --> token(enum), identifier(_Id), token('{'), enumerator_list, token('}').
-enum_specifier --> token(enum), token('{'), enumerator_list, token('}').
-enum_specifier --> token(enum), identifier(_Id).
+enum_specifier(enum(Id,Enumerators)) --> token(enum), identifier(Id), token('{'), enumerator_list(Enumerators), token('}').
+enum_specifier(enum('',Enumerators)) --> token(enum), token('{'), enumerator_list(Enumerators), token('}').
+enum_specifier(enum(Id,[])) --> token(enum), identifier(Id).
 
 % <enumerator-list> ::= <enumerator>
 %                     | <enumerator-list> ',' <enumerator>
 
-enumerator_list --> enumerator.
-enumerator_list --> enumerator_list, token(','), enumerator.
+enumerator_list([Specifier]) --> enumerator(Specifier).
+enumerator_list([Specifier|Specifiers]) --> enumerator(Specifier), token(','), enumerator_list(Specifiers).
 
 % <enumerator> ::= <identifier>
 %                | <identifier> '=' <constant-expression>
 
-enumerator --> identifier(_Id).
+enumerator(Id) --> identifier(Id).
 % enumerator --> identifier, token('='), constant_expression.
 
 % <typedef-name> ::= <identifier>
 
-typedef_name --> identifier(_Id).
+typedef_name(Id) --> identifier(Id).
 
 % <init-declarator> ::= <declarator>
 %                     | <declarator> '=' <initializer>
@@ -272,8 +272,6 @@ nonblanks([H|T]) -->
     nonblanks(T).
 nonblanks([]) -->
     [].
-
-plus_seq(_Match) --> plus_seq(_).
 
 plus_seq(Match, [A|List]) -->
     call(Match, A),
