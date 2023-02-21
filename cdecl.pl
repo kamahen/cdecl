@@ -12,7 +12,17 @@
 
 :- use_module(library(dcg/high_order)).
 
-:- meta_predicate optional(2, ?, ?). % TODO: add param
+:- meta_predicate
+    seq(3,?,?,?),
+    seq(3,//,?,?,?),
+    seq_plus(3,?,?,?),
+    seq_plus(3,//,?,?,?),
+    opt(//, //, ?, ?),
+    opt(//, //, ?, ?, ?).
+
+% TODO: import sequence//2 as seq//2
+seq(Element, List) --> sequence(Element, List).
+seq(Element, Sep, List) --> sequence(Element, Sep, List).
 
 cdecl_explain(Cdecl, _Explanation) :-
     string_codes(Cdecl, Codes),
@@ -33,7 +43,11 @@ cdecl_explain(Cdecl, _Explanation) :-
 
 % <declaration> ::=  {<declaration-specifier>}+ {<init-declarator>}* ;
 
-declaration --> plus_seq(declaration_specifier, _XXX), sequence(init_declarator, _XXX2), optional(token(';')), optional_space.
+declaration -->
+    seq_plus(declaration_specifier, _XXX),
+    seq(init_declarator, _XXX2),
+    opt(token(';'), []),
+    optional_space. % TODO: eos?
 
 % <declaration-specifier> ::= <storage-class-specifier>
 %                           | <type-specifier>
@@ -85,8 +99,8 @@ type_specifier(Specifier) --> typedef_name(Specifier).
 %                               | <struct-or-union> '{' {<struct-declaration>}+ '}'
 %                               | <struct-or-union> <identifier>
 
-% struct_or_union_specifier --> struct_or_union, identifier, token('{'), plus_seq(struct_declaration, _XXX), token('}').
-% struct_or_union_specifier --> struct_or_union, token('{'), plus_seq(struct_declaration, _XXX), token('}').
+% struct_or_union_specifier --> struct_or_union, identifier, token('{'), seq_plus(struct_declaration, _XXX), token('}').
+% struct_or_union_specifier --> struct_or_union, token('{'), seq_plus(struct_declaration, _XXX), token('}').
 struct_or_union_specifier(Specifier) --> struct_or_union(Specifier), identifier(_XXX).
 
 % <struct-or-union> ::= 'struct'
@@ -97,7 +111,7 @@ struct_or_union(union)  --> token(union).
 
 % % <struct-declaration> ::= {<specifier-qualifier>}* <struct-declarator-list>
 
-% struct_declaration -->  sequence(specifier_qualifier, _), struct_declarator_list.
+% struct_declaration -->  seq(specifier_qualifier, _), struct_declarator_list.
 
 % <specifier-qualifier> ::= <type-specifier>
 %                         | <type-qualifier>
@@ -122,11 +136,11 @@ specifier_qualifier(Specifier) --> type_qualifier(Specifier).
 
 % <declarator> ::= {<pointer>}? <direct-declarator>
 
-declarator --> optional(pointer), direct_declarator.
+declarator --> opt(pointer, []), direct_declarator.
 
 % <pointer> ::= * {<type-qualifier>}* {<pointer>}?
 
-pointer --> token('*'), sequence(type_qualifier, _XXX), optional(pointer).
+pointer --> token('*'), seq(type_qualifier, _XXX), opt(pointer, []).
 
 % <type-qualifier> ::= const
 %                    | volatile
@@ -142,13 +156,13 @@ type_qualifier(volatile) --> token(volatile).
 
 direct_declarator --> identifier(_XXX).
 direct_declarator --> token('('), declarator,  token(')').
-direct_declarator --> direct_declarator, token('['), optional(constant_expression), token(']').
+direct_declarator --> direct_declarator, token('['), opt(constant_expression, []), token(']').
 direct_declarator --> direct_declarator, token('('), parameter_type_list, token(')').
-direct_declarator --> direct_declarator, token('('), sequence(identifier, _), token(')').
+direct_declarator --> direct_declarator, token('('), seq(identifier, _), token(')').
 
 % <type-name> ::= {<specifier-qualifier>}+ {<abstract-declarator>}?
 
-type_name --> plus_seq(specifier_qualifier, _XXX), optional(abstract_declarator).
+type_name --> seq_plus(specifier_qualifier, _XXX), opt(abstract_declarator, []).
 
 % <parameter-type-list> ::= <parameter-list>
 %                         | <parameter-list> ',' '...'
@@ -166,9 +180,9 @@ parameter_list --> parameter_list, token(','), parameter_declaration.
 %                           | {<declaration-specifier>}+ <abstract-declarator>
 %                           | {<declaration-specifier>}+
 
-parameter_declaration --> plus_seq(declaration_specifier, _XXX), declarator.
-parameter_declaration --> plus_seq(declaration_specifier, _XXX), abstract_declarator.
-parameter_declaration --> plus_seq(declaration_specifier, _XXX).
+parameter_declaration --> seq_plus(declaration_specifier, _XXX), declarator.
+parameter_declaration --> seq_plus(declaration_specifier, _XXX), abstract_declarator.
+parameter_declaration --> seq_plus(declaration_specifier, _XXX).
 
 % <abstract-declarator> ::= <pointer>
 %                         | <pointer> <direct-abstract-declarator>
@@ -183,8 +197,8 @@ abstract_declarator --> direct_abstract_declarator.
 %                                | {<direct-abstract-declarator>}? '(' {<parameter-type-list>}? ')'
 
 direct_abstract_declarator --> token('('), abstract_declarator, token(')').
-direct_abstract_declarator --> optional(direct_abstract_declarator), token('['), optional(constant_expression), token(']').
-direct_abstract_declarator --> optional(direct_abstract_declarator), token('('), optional(parameter_type_list), token(')').
+direct_abstract_declarator --> opt(direct_abstract_declarator, []), token('['), opt(constant_expression, []), token(']').
+direct_abstract_declarator --> opt(direct_abstract_declarator, []), token('('), opt(parameter_type_list, []), token(')').
 
 % <enum-specifier> ::= 'enum' <identifier> '{' <enumerator-list> '}'
 %                    | 'enum' '{' <enumerator-list> }
@@ -273,13 +287,36 @@ nonblanks([H|T]) -->
 nonblanks([]) -->
     [].
 
-plus_seq(Match, [A|List]) -->
-    call(Match, A),
-    sequence(Match, List).
+% TODO: add seq_plus//2 and seq_plus//3 to library(dcg/high_order)
 
-optional(Match) --> % TODO: add Default
-    Match, !.
-optional(_Match) --> [].
+seq_plus(Match, [A|List]) -->
+    call(Match, A),
+    seq(Match, List).
+
+seq_plus(Match, Sep, [A|List]) -->
+    call(Match, A),
+    (   Sep
+    ->  seq(Match, Sep, List)
+    ;   { List = [] }
+    ).
+
+opt(Match, Default) -->
+    opt(Match, Default, .).
+
+% Reversible optional -- Var is what Match instantiates.
+% For example: opt(identifer(Id), '<no-id>', Id).
+% An alternative way of defining this would be to make the Var
+% implicit (similar to the way seq//3 is defined):
+%    opt(identifier, '<no-id>', Id).
+opt(Match, Default, Var) -->
+    (   { var(Var) },
+        Default
+    *-> []
+    ;   Match
+    *-> []
+    ;   Default
+    ).
+
 
 %%%%%%%%%%%%%%%%%
 
